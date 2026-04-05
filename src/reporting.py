@@ -460,3 +460,221 @@ function copyResp(btn, id) {{
         out.write(html_out)
 
     return path
+
+
+# ── Email-safe HTML report ─────────────────────────────────────────────────────
+# Email clients (Gmail, Outlook) strip JavaScript and most CSS.
+# This version uses only inline styles, no JS, no CSS variables.
+# Only "Respond" and "Consider" posts are included — Skip posts are omitted.
+
+def generate_email_html(
+    scored_posts: list[ScoredPost],
+    config: AppConfig,
+    run_ts: str = "",
+) -> str:
+    """Return a self-contained email-safe HTML string (no JS, inline styles only)."""
+    run_ts = run_ts or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Only include actionable posts in the email
+    email_posts = [sp for sp in scored_posts if sp.respond_recommendation in ("yes", "maybe")]
+    yes_count   = sum(1 for s in scored_posts if s.respond_recommendation == "yes")
+    maybe_count = sum(1 for s in scored_posts if s.respond_recommendation == "maybe")
+    no_count    = sum(1 for s in scored_posts if s.respond_recommendation == "no")
+    total_count = len(scored_posts)
+
+    REC_STYLE = {
+        "yes":   ("Respond",  "#15803d", "#dcfce7", "#166534"),
+        "maybe": ("Consider", "#b45309", "#fef9c3", "#92400e"),
+    }
+
+    def inline_score_bar(label: str, value: float) -> str:
+        pct = min(int(value / 10 * 100), 100)
+        bar_color = "#16a34a" if pct >= 70 else "#d97706" if pct >= 40 else "#dc2626"
+        return (
+            f'<tr>'
+            f'<td style="font-size:11px;color:#94a3b8;width:70px;text-align:right;'
+            f'padding-right:6px;white-space:nowrap;">{label}</td>'
+            f'<td style="width:80px;">'
+            f'<div style="background:#e2e8f0;border-radius:3px;height:5px;overflow:hidden;">'
+            f'<div style="background:{bar_color};width:{pct}%;height:5px;"></div>'
+            f'</div></td>'
+            f'<td style="font-size:11px;font-weight:700;color:#475569;'
+            f'padding-left:5px;width:28px;">{value:.1f}</td>'
+            f'</tr>'
+        )
+
+    cards_html = ""
+    for sp in email_posts:
+        post_url     = _safe_post_url(sp.post_url)
+        snippet_esc  = html.escape(sp.post_snippet or "")
+        response_esc = html.escape(sp.suggested_response or "")
+        reason_esc   = html.escape(sp.response_reason or "")
+        author_esc   = html.escape(sp.author or "Unknown")
+        keyword_esc  = html.escape(sp.keyword or "")
+        post_date    = _format_post_date(sp)
+
+        rec_label, rec_bg, _, rec_txt = REC_STYLE.get(
+            sp.respond_recommendation, ("Unknown", "#f1f5f9", "#64748b", "#475569")
+        )
+        cat_label, _ = _cat_config(sp.category)
+        is_profile   = _is_profile_url(post_url)
+        link_label   = "View author activity →" if is_profile else "Open post →"
+        link_color   = "#7c3aed" if is_profile else "#2563eb"
+
+        score_rows = (
+            inline_score_bar("Relevance",  sp.relevance_score) +
+            inline_score_bar("Engagement", sp.engagement_score) +
+            inline_score_bar("Freshness",  sp.freshness_score) +
+            inline_score_bar("Trending",   sp.trending_score)
+        )
+
+        response_block = ""
+        if sp.suggested_response and sp.suggested_response.strip():
+            response_block = f"""
+            <tr><td colspan="2" style="padding:10px 14px;background:#f8fafc;
+                border-top:1px solid #e2e8f0;">
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;
+                   letter-spacing:.06em;color:#94a3b8;margin-bottom:6px;">
+                Suggested Response
+              </div>
+              <div style="font-size:13px;line-height:1.7;color:#1e293b;
+                   white-space:pre-wrap;">{response_esc}</div>
+            </td></tr>"""
+
+        cards_html += f"""
+        <table width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="margin-bottom:14px;border:1px solid #e2e8f0;border-radius:10px;
+                      border-left:4px solid {rec_txt};overflow:hidden;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+          <!-- Card header -->
+          <tr style="background:{rec_bg};">
+            <td style="padding:8px 14px;vertical-align:middle;">
+              <span style="display:inline-block;padding:2px 10px;border-radius:20px;
+                    font-size:10px;font-weight:700;background:{rec_txt};color:white;
+                    margin-right:6px;">{rec_label}</span>
+              <span style="display:inline-block;padding:2px 10px;border-radius:20px;
+                    font-size:10px;font-weight:600;background:#1d4ed8;color:white;
+                    margin-right:6px;">{cat_label}</span>
+              <span style="font-size:10px;color:#64748b;font-weight:600;">
+                Priority {sp.priority_score:.0f}/100</span>
+            </td>
+            <td style="padding:8px 14px;text-align:right;vertical-align:middle;white-space:nowrap;">
+              <span style="font-size:11px;color:#64748b;margin-right:10px;">
+                &#128197; {html.escape(post_date)}</span>
+              <a href="{html.escape(post_url)}" style="font-size:11px;font-weight:700;
+                 color:{link_color};text-decoration:none;">{link_label}</a>
+            </td>
+          </tr>
+          <!-- Card body -->
+          <tr>
+            <td style="padding:12px 14px;vertical-align:top;background:white;">
+              <div style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:3px;">
+                {author_esc}
+                <span style="font-size:10px;font-weight:400;color:#94a3b8;
+                      background:#f8fafc;border:1px solid #e2e8f0;
+                      padding:1px 7px;border-radius:10px;margin-left:6px;">{keyword_esc}</span>
+              </div>
+              <div style="font-size:13px;color:#334155;line-height:1.6;margin-bottom:8px;">
+                {snippet_esc}
+              </div>
+              <div style="font-size:11px;color:#94a3b8;">
+                &#128077; {sp.likes:,}
+                {"&nbsp;&nbsp;&#128065; " + f"{sp.views:,}" if sp.views else ""}
+                &nbsp;&nbsp;{reason_esc}
+              </div>
+            </td>
+            <td style="padding:12px 14px;vertical-align:top;background:white;
+                       width:170px;border-left:1px solid #f1f5f9;">
+              <table cellpadding="2" cellspacing="0" border="0">
+                {score_rows}
+              </table>
+              <div style="font-size:26px;font-weight:800;color:#0f172a;
+                   text-align:right;margin-top:6px;line-height:1;">
+                {sp.priority_score:.0f}<span style="font-size:11px;font-weight:400;
+                color:#94a3b8;">/100</span>
+              </div>
+            </td>
+          </tr>
+          {response_block}
+        </table>"""
+
+    # Summary stats table
+    stats_html = f"""
+    <table cellpadding="0" cellspacing="8" border="0" style="margin-bottom:20px;">
+      <tr>
+        {_stat_cell(str(total_count), "Scored",  "#1e293b")}
+        {_stat_cell(str(yes_count),   "Respond",  "#16a34a")}
+        {_stat_cell(str(maybe_count), "Consider", "#d97706")}
+        {_stat_cell(str(no_count),    "Skip",     "#dc2626")}
+      </tr>
+    </table>"""
+
+    keywords_str = html.escape(", ".join(config.keywords))
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Amazon Connect Intelligence · {html.escape(run_ts)}</title>
+</head>
+<body style="margin:0;padding:0;background:#eef2f7;font-family:-apple-system,
+     BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eef2f7;">
+<tr><td align="center" style="padding:24px 16px;">
+
+  <table width="640" cellpadding="0" cellspacing="0" border="0"
+         style="max-width:640px;width:100%;">
+
+    <!-- Header bar -->
+    <tr>
+      <td style="background:#0f172a;border-radius:10px 10px 0 0;
+          padding:16px 24px;">
+        <div style="font-size:17px;font-weight:700;color:white;
+             letter-spacing:.02em;">Amazon Connect Intelligence</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:3px;">
+          Generated {html.escape(run_ts)} &nbsp;·&nbsp; {keywords_str}
+        </div>
+      </td>
+    </tr>
+
+    <!-- Stats + cards -->
+    <tr>
+      <td style="background:#eef2f7;padding:16px 0;">
+        {stats_html}
+
+        <div style="font-size:12px;color:#64748b;margin-bottom:16px;">
+          Showing <strong>{len(email_posts)}</strong> actionable posts
+          (Respond + Consider). Open the full report for all posts and interactive features.
+        </div>
+
+        {cards_html}
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="padding:16px 0;text-align:center;font-size:11px;color:#94a3b8;">
+        Amazon Connect Intelligence · LinkedIn Post Scraper
+      </td>
+    </tr>
+
+  </table>
+
+</td></tr>
+</table>
+</body>
+</html>"""
+
+
+def _stat_cell(number: str, label: str, color: str) -> str:
+    return (
+        f'<td style="background:white;border:1px solid #e2e8f0;border-radius:10px;'
+        f'padding:12px 20px;text-align:center;min-width:90px;">'
+        f'<div style="font-size:28px;font-weight:800;color:{color};line-height:1;">'
+        f'{number}</div>'
+        f'<div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;'
+        f'color:#94a3b8;margin-top:3px;">{label}</div>'
+        f'</td>'
+    )

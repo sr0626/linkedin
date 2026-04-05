@@ -35,7 +35,7 @@ from src.parser import parse_posts, extract_profile_id
 from src.filtering import apply_filters
 from src.ai import AIScorer
 from src.storage import StorageManager
-from src.reporting import generate_html
+from src.reporting import generate_html, generate_email_html
 from src.emailer import send_email_report
 
 
@@ -206,13 +206,13 @@ async def run(config_path: str) -> None:
 
         if config.email.enabled:
             if config.email.to and config.email_from and config.email_password:
-                with open(html_path, encoding="utf-8") as f:
-                    html_content = f.read()
+                email_html = generate_email_html(all_scored, config, run_ts)
                 send_email_report(
-                    html_content=html_content,
+                    html_content=email_html,
                     to_addr=config.email.to,
                     from_addr=config.email_from,
                     password=config.email_password,
+                    subject=f"Amazon Connect Intelligence · {run_ts}",
                 )
             else:
                 logger.warning(

@@ -64,5 +64,5 @@ categories:
     - other
 
 email:
-  enabled: false
-  to: ""
+  enabled: true
+  to: ""   # Set your recipient email address here
