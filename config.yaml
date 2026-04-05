@@ -1,0 +1,68 @@
+keywords:
+  - "Amazon Connect"
+  - "Amazon Connect contact center"
+  - "AWS contact center"
+  - "CCaaS AWS"
+  - "Amazon Lex contact center"
+  - "Amazon Polly contact center"
+  - "Contact Lens Amazon"
+  - "Amazon Q Connect"
+  - "AWS CCP agent"
+  - "Amazon Connect Wisdom"
+
+# Directly scrape recent posts from specific LinkedIn profiles (optional).
+# The scraper auto-discovers prolific technical authors from keyword results.
+# Add profiles here only if you want to force-include someone regardless of keyword results.
+# Use the profile ID from the LinkedIn URL: linkedin.com/in/{profile_id}/
+profiles:
+  # Core Amazon Connect practitioners — consistently post technical content
+  - ramprasadsrirama          # Ramprasad Srirama — Partner SA at AWS, prolific AC poster
+  - jerrydimos                # Jerry Dimos — AC technical content
+  - mrudski                   # Marc Rudkowski — AC/CCaaS architecture
+  - sharad-parsana-06529a1    # Sharad Parsana — AC technical posts
+  - manish-tulzapur-a47521a5  # Manish Tulzapur — AWS contact center
+  - larryshurtz               # Larry Shurtz — AWS/AC content
+  - stevenelinson             # Steven M. Elinson — AC technical
+  - pschaumburg               # Patrick Schaumburg — AC/CCaaS
+  - rahulladumor              # Rahul Ladumor — AC feature posts
+  - lorne-currie-34b3611a     # Lorne Currie — AC/Wisdom content
+  - gunnarreinholdsen         # Gunnar Reinholdsen — Lex/AC
+  - shaun-m-james             # Shaun James — AC technical
+  - lisaculbert               # Lisa Culbert — AC/contact center
+  - ankur-taunk-99b51119      # Ankur Taunk — AC analytics and posts
+
+filters:
+  min_likes: 5
+  min_views: 0
+  lookback_days: 7
+  include_if_no_date: true
+
+scraping:
+  max_posts_per_keyword: 50
+  headless: false
+  scroll_pause_ms: 1500
+  max_retries: 3
+
+output:
+  reports_dir: reports
+  data_dir: data
+  logs_dir: logs
+
+ai:
+  model: gpt-4o-mini
+  response_mode: engage
+
+categories:
+  # Available categories: technical, hiring, other
+  # Only posts in respond_to categories get a suggested_response generated.
+  respond_to:
+    - technical
+  # Posts in exclude_categories are dropped entirely from the report.
+  # Remove a category here to see it in results (e.g. remove "other" to see product announcements).
+  exclude_categories:
+    - hiring
+    - other
+
+email:
+  enabled: false
+  to: ""

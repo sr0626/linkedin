@@ -1,0 +1,12 @@
+.env*
+reports/
+data/
+logs/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.playwright/
+*.db
+.claude/
