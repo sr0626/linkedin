@@ -125,7 +125,7 @@ def load_config(config_path: str = "config.yaml") -> AppConfig:
         ),
         email=EmailConfig(
             enabled=bool(em_raw.get("enabled", False)),
-            to=em_raw.get("to", ""),
+            to=os.environ.get("EMAIL_TO", ""),
         ),
         linkedin_email=linkedin_email,
         linkedin_password=linkedin_password,

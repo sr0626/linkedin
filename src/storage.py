@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS posts (
     suggested_response    TEXT,
     is_within_lookback    INTEGER,
     category              TEXT DEFAULT 'other',
-    last_updated          TEXT
+    last_updated          TEXT,
 );
 """
 
