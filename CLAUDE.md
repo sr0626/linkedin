@@ -32,7 +32,7 @@ LinkedInScrapper/
 ├── main.py                  # Orchestration entry point
 ├── requirements.txt
 ├── config.yaml              # All runtime configuration
-├── .env                     # LINKEDIN_EMAIL, LINKEDIN_PASSWORD, OPENAI_API_KEY, EMAIL_FROM, EMAIL_PASSWORD
+├── .env                     # LINKEDIN_EMAIL, LINKEDIN_PASSWORD, OPENAI_API_KEY, EMAIL_FROM, EMAIL_PASSWORD, EMAIL_TO
 ├── .env.example
 ├── .gitignore
 ├── README.md
@@ -47,8 +47,10 @@ LinkedInScrapper/
     ├── ai.py                # OpenAI scoring + response generation
     ├── storage.py           # SQLite upsert + cache
     ├── reporting.py         # HTML report generation (no CSV)
-    ├── reporting_v1_backup.py  # Previous report style (table-based)
+    ├── reporting_v1_backup.py  # Backup: original table-based style
+    ├── reporting_v2_backup.py  # Backup: previous card-based style
     └── emailer.py           # Optional Gmail SMTP
+├── test_email.py            # Standalone email test (uses existing DB, no scraping)
 ```
 
 Runtime directories created automatically: `reports/`, `data/`, `logs/`
@@ -104,8 +106,8 @@ categories:
     - other
 
 email:
-  enabled: false
-  to: ""
+  enabled: true
+  # Recipient is read from EMAIL_TO in .env
 ```
 
 ---
@@ -204,25 +206,35 @@ Returns per post:
 ---
 
 ## HTML Report (`src/reporting.py`)
-Card-based layout. Each post card shows:
-- **Header**: recommendation badge (green/amber/red left border), category badge, priority score, post date/time, link button
-- **Body left**: author, keyword chip, post snippet (4 lines), likes/views, reason
-- **Body right**: 4 score bars (Relevance, Engagement, Freshness, Trending) + priority number
-- **Response block**: suggested response with Copy button and "Mark Responded" button
+Enterprise card-based layout with dark navy topbar (sticky), amber "AC" logo, and `#F0F4F8` background.
+
+Each post card shows:
+- **Header**: color-coded left border + background, rec badge, category badge, priority badge, post date, link button
+- **Body left**: author name, keyword chip, post snippet (4 lines), likes/views, AI reason
+- **Body right**: 4 score bars (Relevance, Engagement, Freshness, Trending) + large priority number, separated by a subtle vertical rule
+- **Response panel**: `#FAFBFD` background, "Suggested Response" label, Copy + "Mark Responded" buttons
+- Cards lift slightly on hover
 
 ### Link types
-- Direct post link → blue "Open post ↗" button
-- Profile fallback URL → purple "View author activity ↗" (redirects to recent-activity page)
+- Direct post link → blue "Open Post ↗" button
+- Profile fallback URL → purple "View Activity ↗" (redirects to recent-activity page)
 
 ### Interactive controls
-- Filter buttons: All / Respond / Consider / Skip / **Responded** / **Not Responded**
+- Sticky toolbar: All / Respond / Consider / Skip / Responded / Not Responded filter buttons + search box + live count
 - Full-text search (author + post text)
-- Live post count
 
 ### Responded state persistence
 - Stored in `localStorage` under fixed key `li_connect_responded`
 - Keyed by post URL — survives across runs and multiple reports
-- "Responded" count in stats strip updates live; counts only posts in the current report
+- "Responded" count in stats strip updates live
+
+## Email Report (`src/reporting.py` → `generate_email_html()`)
+- Separate email-safe HTML generator — inline styles only, no JS, table-based layout
+- Renders correctly in Gmail and Outlook
+- Shows only Respond + Consider posts (Skip omitted)
+- Same design language as the local report: dark header, stats strip, score bars, response block
+- Recipient read from `EMAIL_TO` in `.env`; sender from `EMAIL_FROM` + `EMAIL_PASSWORD`
+- Test without scraping: `.venv/bin/python3 test_email.py`
 
 ---
 
@@ -237,6 +249,7 @@ key = (rec_order[sp.respond_recommendation], -sp.priority_score,
 ## Output
 - **HTML report** only — no CSV generated
 - Terminal prints a `file://` URL for one-click opening
+- Email sent automatically if `email.enabled: true` in `config.yaml` and `EMAIL_TO` is set in `.env`
 - Logs: `logs/scraper_YYYYMMDD.log`
 
 ---

@@ -15,7 +15,8 @@ Scrapes LinkedIn for Amazon Connect and AWS contact center posts, scores them fo
 - **AI response suggestions** written in practitioner voice (OpenAI GPT-4o-mini) — only for technical posts
 - **Category filtering**: hiring and other non-technical posts are excluded from the report entirely
 - **SQLite cache**: posts with unchanged metrics are not re-scored on subsequent runs
-- **Interactive HTML report** with filter buttons, search, copy-to-clipboard responses, and persistent "Mark Responded" tracking
+- **Interactive HTML report** — enterprise card layout, filter buttons, search, copy-to-clipboard, persistent "Mark Responded" tracking
+- **Email delivery** — sends an email-safe HTML summary (Respond + Consider posts) via Gmail SMTP after each run
 
 ---
 
@@ -40,7 +41,12 @@ Edit `.env`:
 LINKEDIN_EMAIL=your@email.com
 LINKEDIN_PASSWORD=yourpassword
 OPENAI_API_KEY=sk-...
+EMAIL_FROM=yourapp@gmail.com      # Gmail address to send from
+EMAIL_PASSWORD=xxxx xxxx xxxx xxxx  # Gmail App Password (not account password)
+EMAIL_TO=you@gmail.com            # Recipient address
 ```
+
+> **Gmail App Password**: Go to [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords), create an app password, and paste the 16-character code as `EMAIL_PASSWORD`. Your regular Gmail password will not work.
 
 ### 3. Run
 
@@ -49,6 +55,13 @@ OPENAI_API_KEY=sk-...
 ```
 
 The terminal prints a `file://` link to the HTML report when done. Cmd+click to open.
+
+If email is enabled, a summary is also sent to `EMAIL_TO` automatically.
+
+To test email without scraping (uses existing DB):
+```bash
+.venv/bin/python3 test_email.py
+```
 
 ---
 
@@ -65,6 +78,7 @@ The terminal prints a `file://` link to the HTML report when done. Cmd+click to 
 | `scraping.headless` | false | Set to `true` for unattended/cron runs |
 | `ai.response_mode` | engage | `engage` / `deep` / `question` / `contrarian` |
 | `categories.exclude_categories` | hiring, other | Categories dropped from report entirely |
+| `email.enabled` | true | Set to `false` to disable email delivery |
 
 ---
 
@@ -83,7 +97,8 @@ Profiles (config + auto-discovered)
     └── Merge + deduplicate
     └── Exclude hiring/other
     └── Sort by priority
-    └── HTML report
+    └── HTML report (file:// link printed to terminal)
+    └── Email summary (Respond + Consider posts) → EMAIL_TO
 ```
 
 ---
@@ -105,13 +120,22 @@ Profiles (config + auto-discovered)
 
 ## HTML report features
 
-- **Card layout** — one card per post, colour-coded by recommendation
+- **Enterprise card layout** — dark navy sticky topbar, amber "AC" logo, cards lift on hover
+- **Color-coded cards** — green (Respond), amber (Consider), red (Skip) left border
 - **Post date/time** shown in every card header
 - **Direct post links** (blue) or author activity fallback (purple) when direct link unavailable
-- **Filter bar**: All / Respond / Consider / Skip / Responded / Not Responded
-- **Search**: live filter by author name or post text
+- **Sticky toolbar**: All / Respond / Consider / Skip / Responded / Not Responded filter buttons + live search
+- **Score bars** — Relevance, Engagement, Freshness, Trending with color-coded values
 - **Copy button** on every suggested response
-- **Mark Responded** — persists in `localStorage` under a fixed key across all runs and reports. Marking a post as responded in one report carries over to the next.
+- **Mark Responded** — persists in `localStorage` under a fixed key across all runs and reports
+
+## Email report features
+
+- Sends after every run when `email.enabled: true` and `EMAIL_TO` is set
+- Shows only Respond + Consider posts — actionable content only
+- Inline styles, no JavaScript — renders correctly in Gmail and Outlook
+- Includes stats strip, score bars, and full suggested responses
+- Test independently: `.venv/bin/python3 test_email.py`
 
 ---
 
@@ -163,8 +187,11 @@ LinkedInScrapper/
     ├── filtering.py            Likes / views / lookback / language filter
     ├── ai.py                   OpenAI scoring + response generation
     ├── storage.py              SQLite upsert + cache
-    ├── reporting.py            HTML report generation
-    └── emailer.py              Optional Gmail SMTP delivery
+    ├── reporting.py            HTML + email report generation
+    ├── reporting_v1_backup.py  Backup: original table-based style
+    ├── reporting_v2_backup.py  Backup: previous card-based style
+    └── emailer.py              Gmail SMTP delivery
+├── test_email.py               Standalone email test (no scraping required)
 ```
 
 ---
