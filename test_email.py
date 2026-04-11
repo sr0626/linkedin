@@ -62,6 +62,7 @@ def load_posts_from_db(db_path: str) -> list[ScoredPost]:
             response_mode=row["response_mode"] or "engage",
             response_reason=row["response_reason"] or "",
             suggested_response=row["suggested_response"] or "",
+            suggested_response_2=row["suggested_response_2"] or "",
             is_within_lookback=bool(row["is_within_lookback"]),
             category=row["category"] or "other",
         )
