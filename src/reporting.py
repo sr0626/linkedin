@@ -83,6 +83,7 @@ def generate_html(
         author_esc  = html.escape(sp.author or "Unknown")
         snippet_esc = html.escape(sp.post_snippet or "")
         resp_esc    = html.escape(sp.suggested_response or "")
+        resp2_esc   = html.escape(sp.suggested_response_2 or "")
         reason_esc  = html.escape(sp.response_reason or "")
         kw_esc      = html.escape(sp.keyword or "")
         post_date   = _format_post_date(sp)
@@ -110,16 +111,27 @@ def generate_html(
         has_response = bool(resp_esc.strip())
         response_block = ""
         if has_response:
+            resp2_block = ""
+            if resp2_esc.strip():
+                resp2_block = f"""
+            <div class="response-divider"></div>
+            <div class="response-header">
+              <span class="response-label">Option 2</span>
+              <div class="response-actions">
+                <button class="btn-action" onclick="copyResp(this,'rt{i}b')">Copy</button>
+              </div>
+            </div>
+            <div id="rt{i}b" class="response-body">{resp2_esc}</div>"""
             response_block = f"""
           <div class="response-panel">
             <div class="response-header">
-              <span class="response-label">Suggested Response</span>
+              <span class="response-label">Option 1</span>
               <div class="response-actions">
                 <button class="btn-action" onclick="copyResp(this,'rt{i}')">Copy</button>
                 <button class="btn-action btn-respond" id="rb{i}" onclick="markResponded({i})">Mark Responded</button>
               </div>
             </div>
-            <div id="rt{i}" class="response-body">{resp_esc}</div>
+            <div id="rt{i}" class="response-body">{resp_esc}</div>{resp2_block}
           </div>"""
 
         cards_html += f"""
@@ -536,6 +548,11 @@ body {{
   background: #FAFBFD;
   padding: 12px 16px;
 }}
+.response-divider {{
+  border: none;
+  border-top: 1px dashed #E2E8F0;
+  margin: 12px 0;
+}}
 .response-header {{
   display: flex;
   align-items: center;
@@ -775,6 +792,7 @@ def generate_email_html(
         author_esc = html.escape(sp.author or "Unknown")
         snip_esc   = html.escape(sp.post_snippet or "")
         resp_esc   = html.escape(sp.suggested_response or "")
+        resp2_esc  = html.escape(sp.suggested_response_2 or "")
         reason_esc = html.escape(sp.response_reason or "")
         kw_esc     = html.escape(sp.keyword or "")
         post_date  = _format_post_date(sp)
@@ -796,13 +814,21 @@ def generate_email_html(
 
         resp_block = ""
         if resp_esc.strip():
+            resp2_section = ""
+            if resp2_esc.strip():
+                resp2_section = f"""
+                <div style="border-top:1px dashed #E2E8F0;margin:10px 0;"></div>
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;
+                     letter-spacing:.08em;color:#94A3B8;margin-bottom:8px;">Option 2</div>
+                <div style="font-size:13px;line-height:1.75;color:#1E293B;
+                     white-space:pre-wrap;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">{resp2_esc}</div>"""
             resp_block = f"""
             <tr><td colspan="2" style="padding:0;">
               <div style="background:#FAFBFD;border-top:1px solid #E2E8F0;padding:12px 16px;">
                 <div style="font-size:10px;font-weight:700;text-transform:uppercase;
-                     letter-spacing:.08em;color:#94A3B8;margin-bottom:8px;">Suggested Response</div>
+                     letter-spacing:.08em;color:#94A3B8;margin-bottom:8px;">Option 1</div>
                 <div style="font-size:13px;line-height:1.75;color:#1E293B;
-                     white-space:pre-wrap;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">{resp_esc}</div>
+                     white-space:pre-wrap;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">{resp_esc}</div>{resp2_section}
               </div>
             </td></tr>"""
 

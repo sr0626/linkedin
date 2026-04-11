@@ -40,6 +40,7 @@ class ScoredPost:
     response_mode: str
     response_reason: str
     suggested_response: str
+    suggested_response_2: str
     is_within_lookback: bool
     category: str = "other"       # technical / hiring / other
 
